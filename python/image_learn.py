@@ -19,10 +19,12 @@ class ImageLearn:
         print("Using device:", self.device)
 
         # 設定ファイル読み込み
-        self.keywords = config_learn['keywords']
-        output_root = config_learn['output_root']
+        data_config = config_learn.get('data', {})
+        self.keywords = data_config.get('keywords', {})
+        output_root = data_config.get('output_root')
         self.train_config = config_learn.get('train', {})
-        self.model_path = config_learn['save_model_path']
+        output = config_learn.get('output')
+        self.model_path = output.get('save_model_path')
 
         # 学習パラメータ
         self.batch_size = self.train_config.get('batch_size', 32)
@@ -93,5 +95,5 @@ class ImageLearn:
 
     # モデル保存
     def save_model(self):
-        torch.save(self.model.state_dict(), self.model_path)
+        torch.save(self.model.state_dict(), "models/image_model.pth")
         

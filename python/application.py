@@ -23,6 +23,7 @@ class ImageLearnApp:
 
     
     def run(self):
+        self.crawl()
         self.learn()
         self.evaluate()
         #if check_timestamp_update():

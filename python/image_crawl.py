@@ -3,7 +3,7 @@ from icrawler.builtin import BingImageCrawler
 from sklearn.model_selection import train_test_split
 import os
 import shutil
-from python.config_loader import load_config
+from config_loader import config_learn
 
 # ディレクトリ構成
 # dataset/
@@ -15,13 +15,13 @@ from python.config_loader import load_config
 # │   └── val/
 
 class ImageCrawl:
-    def __init__(self, config_path='config.yaml'):
+    def __init__(self):
         # 設定ファイル読み込み
-        config = load_config(config_path)
-        self.keywords = config['keywords']
-        self.num_images = config['num_images']    # 各キーワードで収集する画像数
-        self.val_ratio = config['val_ratio']      # 検証用の割合
-        self.output_root = config['output_root']
+        data_config = config_learn.get('data', {})
+        self.keywords = data_config.get('keywords', {})
+        self.num_images = data_config.get('num_images')    # 各キーワードで収集する画像数
+        self.val_ratio = data_config.get('val_ratio')      # 検証用の割合
+        self.output_root = data_config.get('output_root')
         
     def crawl(self):
         for keyword in self.keywords:

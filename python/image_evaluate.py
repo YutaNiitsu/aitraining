@@ -18,20 +18,25 @@ class ImageEvaluate:
         # GPU使用可能なら使う
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+        # 設定ファイル読み込み
+        data_config = config_learn.get('data', {})
+        self.keywords = data_config.get('keywords', {})
+        output_root = data_config.get('output_root')
+        output = config_learn.get('output')
+        self.model_path = output.get('save_model_path')
+        log_path = output.get('val_log_path')
+
         # ログ設定（ファイル出力とコンソール出力）
         logging.basicConfig(
             level=logging.INFO,
             format='%(asctime)s [%(levelname)s] %(message)s',
             handlers=[
-                logging.FileHandler("training.log", encoding='utf-8'),
+                logging.FileHandler(log_path, encoding='utf-8'),
                 logging.StreamHandler()
             ]
         )
 
-        # 設定ファイル読み込み
-        self.keywords = config_learn['keywords']
-        output_root = config_learn['output_root']
-        self.model_path = config_learn['save_model_path']
+        
 
         # データのディレクトリ
         self.data_dirs = []

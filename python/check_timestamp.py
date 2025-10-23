@@ -2,7 +2,7 @@ import os
 import time
 import subprocess
 
-CONFIG_PATH = "config.yaml"
+CONFIG_PATH = "/mnt/c/Users/yniit/Documents/aitraining/config/learn.yaml"
 STAMP_PATH = ".last_config_timestamp"
 
 def get_mtime(path):
