@@ -14,7 +14,7 @@ from config_loader import config_learn
 import logging
 
 class ImageEvaluate:
-    def __init__(self, config_path='config.yaml'):
+    def __init__(self):
         # GPU使用可能なら使う
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 

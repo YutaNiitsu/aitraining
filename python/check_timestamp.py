@@ -2,8 +2,8 @@ import os
 import time
 import subprocess
 
-CONFIG_PATH = "/mnt/c/Users/yniit/Documents/aitraining/config/learn.yaml"
-STAMP_PATH = ".last_config_timestamp"
+CONFIG_PATH = "config/learn.yaml"
+STAMP_PATH = "config/.last_config_timestamp"
 
 def get_mtime(path):
     return os.path.getmtime(path) if os.path.exists(path) else 0

@@ -95,5 +95,5 @@ class ImageLearn:
 
     # モデル保存
     def save_model(self):
-        torch.save(self.model.state_dict(), "models/image_model.pth")
+        torch.save(self.model.state_dict(), self.model_path)
         
