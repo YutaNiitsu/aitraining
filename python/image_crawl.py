@@ -4,6 +4,7 @@ from sklearn.model_selection import train_test_split
 import os
 import shutil
 from config_loader import config_learn
+from pathlib import Path
 
 # ディレクトリ構成
 # dataset/
@@ -21,7 +22,7 @@ class ImageCrawl:
         self.keywords = data_config.get('keywords', {})
         self.num_images = data_config.get('num_images')    # 各キーワードで収集する画像数
         self.val_ratio = data_config.get('val_ratio')      # 検証用の割合
-        self.output_root = data_config.get('output_root')
+        self.output_root = Path(__file__).resolve().parent.parent / data_config.get('output_root')
         
     def crawl(self):
         for keyword in self.keywords:

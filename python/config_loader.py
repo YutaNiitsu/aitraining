@@ -1,6 +1,7 @@
 import yaml
 import os
 import sys
+from pathlib import Path
 
 def load_config(path):
     if not os.path.exists(path):
@@ -19,5 +20,5 @@ def load_config(path):
 
     return config
 
-config_learn = load_config("config/learn.yaml")
-config_labels = load_config("config/labels.yaml")
+config_learn = load_config(Path(__file__).resolve().parent.parent / 'config' / 'learn.yaml')
+config_labels = load_config(Path(__file__).resolve().parent.parent / 'config' / 'labels.yaml')

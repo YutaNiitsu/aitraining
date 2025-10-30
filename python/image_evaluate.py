@@ -12,6 +12,7 @@ from image_dataset import ImageDataset
 from image_cnnmodel import CNNModel
 from config_loader import config_learn
 import logging
+from pathlib import Path
 
 class ImageEvaluate:
     def __init__(self):
@@ -21,10 +22,10 @@ class ImageEvaluate:
         # 設定ファイル読み込み
         data_config = config_learn.get('data', {})
         self.keywords = data_config.get('keywords', {})
-        output_root = data_config.get('output_root')
+        output_root = Path(__file__).resolve().parent.parent / data_config.get('output_root')
         output = config_learn.get('output')
-        self.model_path = output.get('save_model_path')
-        log_path = output.get('val_log_path')
+        self.model_path = Path(__file__).resolve().parent.parent / output.get('save_model_path')
+        log_path = Path(__file__).resolve().parent.parent / output.get('val_log_path')
 
         # ログ設定（ファイル出力とコンソール出力）
         logging.basicConfig(
@@ -87,15 +88,15 @@ class ImageEvaluate:
                 labels = labels.to(self.device).long()
                 outputs = self.model(images)
                 loss = criterion(outputs, labels)
-                total_loss += loss.item()
+                total_loss += loss.item()                      # 全体の損失を加算
 
                 _, predicted = torch.max(outputs, 1)
-                total += labels.size(0)
-                correct += (predicted == labels).sum().item()
+                total += labels.size(0)                        # サンプル数を加算
+                correct += (predicted == labels).sum().item()  # 正解した数を加算
 
         test_acc = correct / total
 
-        # ログ出力
+        # ログ出力（Accuracy:モデルの精度  Loss:損失）
         logging.info(f"Accuracy: {test_acc:.4f}, Loss: {total_loss:.4f}")
 
         print(f"\nTest Accuracy: {test_acc:.4f}")

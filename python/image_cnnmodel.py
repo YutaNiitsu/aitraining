@@ -2,7 +2,7 @@ import torch.nn as nn
 
 # モデル定義
 class CNNModel(nn.Module):
-
+    # ctgy_num:出力クラス数
     def __init__(self, ctgy_num):
         super(CNNModel, self).__init__()
         self.conv = nn.Sequential(

@@ -7,24 +7,24 @@ from torch.utils.data import DataLoader
 import torchvision.transforms as transforms
 from image_dataset import ImageDataset
 from image_cnnmodel import CNNModel
-from config_loader import config_learn
+from pathlib import Path
+from base_learn import BaseLearn
 
 
-
-class ImageLearn:
-
+class ImageLearn(BaseLearn):
     def __init__(self):
+        super().__init__()
         # GPU使用可能なら使う
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         print("Using device:", self.device)
 
-        # 設定ファイル読み込み
-        data_config = config_learn.get('data', {})
+        # 設定ファイルから値を取得
+        data_config = self.config_learn.get('data', {})
         self.keywords = data_config.get('keywords', {})
-        output_root = data_config.get('output_root')
-        self.train_config = config_learn.get('train', {})
-        output = config_learn.get('output')
-        self.model_path = output.get('save_model_path')
+        output_root = Path(__file__).resolve().parent.parent / data_config.get('output_root')
+        self.train_config = self.config_learn.get('train', {})
+        output = self.config_learn.get('output')
+        self.model_path = Path(__file__).resolve().parent.parent / output.get('save_model_path')
 
         # 学習パラメータ
         self.batch_size = self.train_config.get('batch_size', 32)
@@ -57,13 +57,14 @@ class ImageLearn:
         self.dataloader = DataLoader(dataset, batch_size=self.batch_size, shuffle=self.shuffle)
 
     def createModel(self):
-        # モデル定義
-        self.model = CNNModel(len(self.keywords)).to(self.device)
-        # 損失関数と最適化
+        # モデルのインスタンスを生成
+        self.model = CNNModel(len(self.keywords)).to(self.device)    # モデルをデバイスに転送
+        # 最適化手法
         if self.train_config.get('optimizer', 'adam') == 'adam':
             self.optimizer = optim.Adam(self.model.parameters(), lr=self.learning_rate)
         elif self.train_config['optimizer'] == 'sgd':
             self.optimizer = optim.SGD(self.model.parameters(), lr=self.learning_rate)
+        # 損失関数
         if self.train_config.get('loss_function', 'cross_entropy') == 'cross_entropy':
             self.criterion = nn.CrossEntropyLoss()
         elif self.train_config['loss_function'] == 'mse':
@@ -79,16 +80,19 @@ class ImageLearn:
     def learn(self):
         # 学習ループ
         for epoch in range(self.epochs):
-            running_loss = 0.0
+            running_loss = 0.0    # 累積損失
             for images, labels in self.dataloader:
+                # デバイスにデータを移動
                 images = images.to(self.device)
                 labels = labels.to(self.device)
-
+                # 前回の勾配情報をリセット
                 self.optimizer.zero_grad()
-                outputs = self.model(images)
-                loss = self.criterion(outputs, labels)
-                loss.backward()
-                self.optimizer.step()
+                # 順伝播（Forward）と損失計算
+                outputs = self.model(images)    # モデルが予測を出力
+                loss = self.criterion(outputs, labels)  # 損失を計算
+                # 逆伝播（Backward）とパラメータ更新
+                loss.backward()                  # 勾配を計算
+                self.optimizer.step()            # パラメータを更新してモデルを改善（学習）
 
                 running_loss += loss.item()
                 print(f"Epoch {epoch+1}/100, Loss: {running_loss:.4f}")
