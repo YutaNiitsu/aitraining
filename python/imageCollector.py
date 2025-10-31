@@ -39,15 +39,17 @@ class ImageCollector:
     def imageCrawl(self, keyword, target_num, save_dir, batch_size=100, max_retries=5):
         os.makedirs(save_dir, exist_ok=True)
         total_saved = len(os.listdir(save_dir))
-        retries = 0
+        try_times = 0          # 総試行回数
+        retries = 0            # リトライ回数
         # 最大リトライ回数に達したら終了
         while total_saved < target_num and retries < max_retries:
             remaining = target_num - total_saved
             print(f"収集中: 残り {remaining} 枚")
-
+            # Bing Image Search APIの1回の呼び出しで取得できる画像の最大数は150枚
             crawler = BingImageCrawler(storage={'root_dir': save_dir}, log_level='ERROR')   # GoogleImageCrawlerだと失敗（botをブロック？）
-            crawler.crawl(keyword=keyword, max_num=min(batch_size, remaining))
-
+            max_num=min(batch_size, remaining)
+            crawler.crawl(keyword=keyword, max_num=max_num, offset=try_times)
+            try_times += max_num
             new_total = len(os.listdir(save_dir))
             if new_total == total_saved:
                 # 収集が進まない場合はリトライ

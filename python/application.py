@@ -29,6 +29,7 @@ class ModelTrainerApp:
         keywords = self.config_mgr.config['data']['keywords']
         output_root = Path(__file__).resolve().parent.parent / self.config_mgr.config['data']['output_root']
         save_model_path = Path(__file__).resolve().parent.parent / self.config_mgr.config['output']['save_model_path']
+        eval_log_path = Path(__file__).resolve().parent.parent / self.config_mgr.config['output']['eval_log_path']
         data_config = self.config_mgr.config['data']
         train_config = self.config_mgr.config['train']
 
@@ -55,7 +56,7 @@ class ModelTrainerApp:
         self.trainer.train(train_dataLoader, train_config)
         self.trainer.save_model(save_model_path)
         # 評価
-        self.evaluator.evaluate(self.trainer.model, eval_dataLoader)
+        self.evaluator.evaluate(self.trainer.model, eval_dataLoader, eval_log_path)
 
     def run(self):
         schedule.every().day.at("06:00").do(self.run_daily)

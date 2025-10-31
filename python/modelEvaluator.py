@@ -9,13 +9,13 @@ class ModelEvaluator:
         # GPU使用可能なら使う
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+    def evaluate(self, model, dataloader, eval_log_path):
         logging.basicConfig(
-            filename='evaluate.log',
+            filename=eval_log_path,
             level=logging.INFO,
             format='%(asctime)s - %(levelname)s - %(message)s'
         )
 
-    def evaluate(self, model, dataloader):
         correct = 0
         total = 0
         criterion = nn.CrossEntropyLoss()
