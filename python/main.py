@@ -1,8 +1,8 @@
-from application import ImageLearnApp
-import asyncio
+from application import ModelTrainerApp
 
 def main():
-    ImageLearnApp().run()
+    app = ModelTrainerApp()
+    app.run_daily()
 
 if __name__ == '__main__':
     main()
