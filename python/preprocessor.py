@@ -4,6 +4,7 @@ import cv2
 import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
 from image_dataset import ImageDataset
+from safe_imread import safe_imread
 
 class Preprocessor:
     def preprocessor(self, data_dirs, train_config):
@@ -34,7 +35,7 @@ class Preprocessor:
                 if f.lower().endswith(valid_exts)    # f.lower()によって大文字拡張子
             ]
             for file in files:
-                img = cv2.imread(file)
+                img = safe_imread(file)
                 if img is None:
                     continue
                 # リサイズと色空間の変換
