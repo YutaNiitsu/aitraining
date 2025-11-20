@@ -3,6 +3,7 @@ from image_cnnmodel import CNNModel
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from torchvision import models
 
 class ModelTrainer:
     def __init__(self):
@@ -10,13 +11,22 @@ class ModelTrainer:
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         print("使用デバイス:", self.device)
 
-    def build_model(self, num_classes, save_model_path):
+    def build_cnnmodel(self, num_classes, save_model_path):
         # モデルのインスタンスを生成
         self.model = CNNModel(num_classes)
         if os.path.exists(save_model_path):
             print("学習済みモデルを読み込みます")
             self.model.load_state_dict(torch.load(save_model_path))
-            
+    
+        self.model.to(self.device)
+
+    def build_resnetmodel(self, num_classes, save_model_path):
+        # モデルのインスタンスを生成
+        self.model = models.resnet18(pretrained=True)
+        if os.path.exists(save_model_path):
+            print("学習済みモデルを読み込みます")
+            self.model.load_state_dict(torch.load(save_model_path))
+        self.model.fc = nn.Linear(self.model.fc.in_features, num_classes)
         self.model.to(self.device)
 
     def train(self, dataloader, train_config):
@@ -38,8 +48,7 @@ class ModelTrainer:
             running_loss = 0.0    # 累積損失
             for images, labels in dataloader:
                 # デバイスにデータを移動
-                images = images.to(self.device)
-                labels = labels.to(self.device)
+                images, labels = images.to(self.device), labels.to(self.device)
                 # 前回の勾配情報をリセット
                 self.optimizer.zero_grad()
                 # 順伝播（Forward）と損失計算
@@ -47,10 +56,10 @@ class ModelTrainer:
                 loss = self.criterion(outputs, labels)  # 損失を計算（予測と正解のズレを数値化）
                 # 逆伝播（Backward）とパラメータ更新
                 loss.backward()                         # 損失を計算し、各パラメータに対する勾配（∂Loss/∂W）を求める
-                self.optimizer.step()                   # 保持しているモデルのパラメータを更新してモデルを改善（学習）
+                self.optimizer.step()                   # .grad を使って保持しているモデルのパラメータを更新してモデルを改善（学習）
 
                 running_loss += loss.item()
-                print(f"Epoch {epoch+1}/100, Loss: {running_loss:.4f}")
+                print(f"Epoch {epoch+1}/{self.epochs}, Loss: {running_loss:.4f}")
 
     def save_model(self, path):
         torch.save(self.model.state_dict(), path)

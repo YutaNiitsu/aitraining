@@ -18,12 +18,15 @@ class ModelTrainerApp:
             self.ppath = Path("C:/Users/yniit/Documents/aitraining").resolve()
         elif os_name == 'Linux':
             self.ppath = Path(__file__).resolve().parent.parent
-        self.config_mgr = ConfigManager(self.ppath / 'config' / 'learn.yaml')
-        eval_log_path = self.ppath / self.config_mgr.config['output']['eval_log_path']
+        learn_conf_path = self.ppath / 'config' / 'learn.yaml'
+        log_conf_path = self.ppath / 'config' / 'logging.yaml'
+        labels_path = self.ppath / 'config' / 'labels.yaml'
+        self.config_mgr = ConfigManager(learn_conf_path, log_conf_path, labels_path)
+        self.config_mgr.load_config()
         self.collector = ImageCollector()
         self.preprocessor = Preprocessor()
         self.trainer = ModelTrainer()
-        self.evaluator = ModelEvaluator(eval_log_path)
+        self.evaluator = ModelEvaluator()
 
         signal.signal(signal.SIGINT, self.handle_signal)
         signal.signal(signal.SIGTERM, self.handle_signal)
@@ -38,15 +41,21 @@ class ModelTrainerApp:
             print("設定ファイルは未更新です。")
             return
         
-        data_config = self.config_mgr.config['data']
-        train_config = self.config_mgr.config['train']
+        data_config = self.config_mgr.learn_config['data']
+        train_config = self.config_mgr.learn_config['train']
         categorys = data_config['categorys']
+        image_size = data_config['image_size']
         output_root = Path(__file__).resolve().parent.parent / data_config['output_root']
-        save_model_path = self.ppath / self.config_mgr.config['output']['save_model_path']
-
+        save_model_path = self.ppath / self.config_mgr.learn_config['output']['save_model_path']
+        self.label_map = self.config_mgr.labels['label_map']
         # スクレイピングと分割
         #self.collector.collect(data_config)
-        
+        val_ratio = data_config.get('val_ratio') 
+        #for category, _ in categorys.items():
+        #    tar_dir = f'python/temp_{category}'
+        #    self.collector.remove_duplicate(tar_dir)
+        #    self.collector.split_images(tar_dir, output_root, category, val_ratio)
+
         # 前処理
         # データのディレクトリ
         train_data_dirs = []
@@ -54,19 +63,23 @@ class ModelTrainerApp:
         for category in categorys:
             train_data_dirs.append(os.path.join(output_root, category, 'train'))
             eval_data_dirs.append(os.path.join(output_root, category, 'eval'))
+
         # 前処理
-        self.preprocessor.preprocessor(train_data_dirs, train_config)
         # 学習用データセット
+        self.preprocessor.preprocessor(train_data_dirs, train_config, image_size)
         train_dataLoader = self.preprocessor.dataLoader
-        self.preprocessor.preprocessor(eval_data_dirs, train_config)
+        
         # 検証用データセット
+        self.preprocessor.preprocessor(eval_data_dirs, train_config, image_size)
         eval_dataLoader = self.preprocessor.dataLoader
         # 学習
-        self.trainer.build_model(num_classes=len(categorys), save_model_path=save_model_path)
+        self.trainer.build_cnnmodel(len(categorys), save_model_path)
         self.trainer.train(train_dataLoader, train_config)
         self.trainer.save_model(save_model_path)
         # 評価
-        self.evaluator.evaluate(self.trainer.model, eval_dataLoader, eval_log_path)   
+        #self.evaluator.evaluate(len(categorys), self.label_map, self.trainer.model, eval_dataLoader)   
+        self.evaluator.eval_conf_mat(self.label_map, self.trainer.model, eval_dataLoader)
+        #self.evaluator.grad_cam(self.trainer.model, os.path.join(output_root, 'dog', 'eval', '000013.jpg'))
 
     def run(self):
         schedule.every().day.at("06:00").do(self.run_daily)
