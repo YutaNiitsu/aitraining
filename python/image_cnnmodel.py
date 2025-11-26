@@ -9,18 +9,17 @@ class CNNModel(nn.Module):
         self.conv = nn.Sequential(
             nn.Conv2d(3, 32, kernel_size=3, padding=1),  # 入力3ch → 出力32ch
             nn.ReLU(),                                   # 活性化関数
-            nn.MaxPool2d(2)                              # 空間サイズを半分に
+            nn.MaxPool2d(2),                             # 空間サイズを半分に
+            nn.AdaptiveAvgPool2d((64, 64))               # 常に 64×64 に変換
         )
-        # fcは後でin_featuresを決める
-        self.fc1 = nn.Linear(0, 128)  # ダミー、後で置き換える
-        self.fc2 = nn.Linear(128, ctgy_num)
+        self.fc = nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(32 * 64 * 64, 128),
+            nn.ReLU(),
+            nn.Linear(128, ctgy_num)
+        )
 
     def forward(self, x):
         x = self.conv(x)
-        x = torch.flatten(x, 1)
-        if self.fc1.in_features == 0:  # 初回だけin_featuresを決定
-            self.fc1 = nn.Linear(x.shape[1], 128).to(x.device)
-        x = self.fc1(x)
-        x = torch.relu(x)
-        x = self.fc2(x)
+        x = self.fc(x)
         return x

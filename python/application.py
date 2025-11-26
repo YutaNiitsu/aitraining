@@ -46,16 +46,25 @@ class ModelTrainerApp:
         categorys = data_config['categorys']
         image_size = data_config['image_size']
         output_root = Path(__file__).resolve().parent.parent / data_config['output_root']
-        save_model_path = self.ppath / self.config_mgr.learn_config['output']['save_model_path']
-        self.label_map = self.config_mgr.labels['label_map']
+        label_map = self.config_mgr.labels['label_map']
+        using_model = train_config['using_model']
+        save_model_path = ''
+        if using_model == 'cnn':
+            save_model_path = self.ppath / self.config_mgr.learn_config['output']['cnn_model']['save_model_path']
+        elif using_model == 'resnet':
+            save_model_path = self.ppath / self.config_mgr.learn_config['output']['resnet_model']['save_model_path']
+        else:
+            print("using_modelが正しくありません。")
+            return
+        
         # スクレイピングと分割
         #self.collector.collect(data_config)
         val_ratio = data_config.get('val_ratio') 
-        #for category, _ in categorys.items():
-        #    tar_dir = f'python/temp_{category}'
-        #    self.collector.remove_duplicate(tar_dir)
-        #    self.collector.split_images(tar_dir, output_root, category, val_ratio)
-
+        for category, _ in categorys.items():
+            tar_dir = f'python/temp_{category}'
+            self.collector.remove_duplicate(tar_dir)
+            #self.collector.split_images(tar_dir, output_root, category, val_ratio)
+        return
         # 前処理
         # データのディレクトリ
         train_data_dirs = []
@@ -66,19 +75,19 @@ class ModelTrainerApp:
 
         # 前処理
         # 学習用データセット
-        self.preprocessor.preprocessor(train_data_dirs, train_config, image_size)
+        self.preprocessor.preprocessor(train_data_dirs, train_config, image_size, False)
         train_dataLoader = self.preprocessor.dataLoader
         
         # 検証用データセット
-        self.preprocessor.preprocessor(eval_data_dirs, train_config, image_size)
+        self.preprocessor.preprocessor(eval_data_dirs, train_config, image_size, True)
         eval_dataLoader = self.preprocessor.dataLoader
         # 学習
-        self.trainer.build_cnnmodel(len(categorys), save_model_path)
-        self.trainer.train(train_dataLoader, train_config)
-        self.trainer.save_model(save_model_path)
+        self.trainer.build_model(len(categorys), using_model, save_model_path)
+        #self.trainer.train(train_dataLoader, train_config)
+        #self.trainer.save_model(save_model_path)
         # 評価
         #self.evaluator.evaluate(len(categorys), self.label_map, self.trainer.model, eval_dataLoader)   
-        self.evaluator.eval_conf_mat(self.label_map, self.trainer.model, eval_dataLoader)
+        self.evaluator.eval_conf_mat(label_map, self.trainer.model, eval_dataLoader)
         #self.evaluator.grad_cam(self.trainer.model, os.path.join(output_root, 'dog', 'eval', '000013.jpg'))
 
     def run(self):

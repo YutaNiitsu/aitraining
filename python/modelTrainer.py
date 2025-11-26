@@ -1,3 +1,4 @@
+from logging import getLogger
 import os
 from image_cnnmodel import CNNModel
 import torch
@@ -11,22 +12,23 @@ class ModelTrainer:
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         print("使用デバイス:", self.device)
 
-    def build_cnnmodel(self, num_classes, save_model_path):
-        # モデルのインスタンスを生成
-        self.model = CNNModel(num_classes)
-        if os.path.exists(save_model_path):
-            print("学習済みモデルを読み込みます")
-            self.model.load_state_dict(torch.load(save_model_path))
+    def build_model(self, num_classes, used_model, save_model_path):
+        if used_model == 'cnn':
+            # モデルのインスタンスを生成
+            self.model = CNNModel(num_classes)
+            if os.path.exists(save_model_path):
+                print("学習済みモデルを読み込みます")
+                self.model.load_state_dict(torch.load(save_model_path))
+        
+        if used_model == 'resnet':
+            # モデルのインスタンスを生成
+            self.model = models.resnet18(pretrained=True)
+            self.model.fc = nn.Linear(self.model.fc.in_features, num_classes)
+            if os.path.exists(save_model_path):
+                print("学習済みモデルを読み込みます")
+                self.model.load_state_dict(torch.load(save_model_path))
+            
     
-        self.model.to(self.device)
-
-    def build_resnetmodel(self, num_classes, save_model_path):
-        # モデルのインスタンスを生成
-        self.model = models.resnet18(pretrained=True)
-        if os.path.exists(save_model_path):
-            print("学習済みモデルを読み込みます")
-            self.model.load_state_dict(torch.load(save_model_path))
-        self.model.fc = nn.Linear(self.model.fc.in_features, num_classes)
         self.model.to(self.device)
 
     def train(self, dataloader, train_config):
