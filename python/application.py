@@ -57,14 +57,15 @@ class ModelTrainerApp:
             print("using_modelが正しくありません。")
             return
         
-        # スクレイピングと分割
-        #self.collector.collect(data_config)
-        val_ratio = data_config.get('val_ratio') 
-        for category, _ in categorys.items():
-            tar_dir = f'python/temp_{category}'
-            self.collector.remove_duplicate(tar_dir)
-            #self.collector.split_images(tar_dir, output_root, category, val_ratio)
-        return
+        # 分割
+        # val_ratio = data_config.get('val_ratio') 
+        # for category, _ in categorys.items():
+        #     hash_set = set()
+        #     unique_files = []
+        #     tar_dir = f'python/temp_{category}'
+        #     self.collector.remove_duplicate(tar_dir, hash_set, unique_files)
+        #     self.collector.split_images(tar_dir, output_root, category, val_ratio)
+        
         # 前処理
         # データのディレクトリ
         train_data_dirs = []
@@ -83,12 +84,14 @@ class ModelTrainerApp:
         eval_dataLoader = self.preprocessor.dataLoader
         # 学習
         self.trainer.build_model(len(categorys), using_model, save_model_path)
-        #self.trainer.train(train_dataLoader, train_config)
-        #self.trainer.save_model(save_model_path)
+        self.trainer.train(train_dataLoader, train_config)
+        self.trainer.save_model(save_model_path)
         # 評価
         #self.evaluator.evaluate(len(categorys), self.label_map, self.trainer.model, eval_dataLoader)   
         self.evaluator.eval_conf_mat(label_map, self.trainer.model, eval_dataLoader)
-        #self.evaluator.grad_cam(self.trainer.model, os.path.join(output_root, 'dog', 'eval', '000013.jpg'))
+        #img_path = "C:/Users/yniit/Documents/課題/ai設計書/サンプル画像/shutterstock_1765073558.jpg"
+        #self.evaluator.heatmap(label_map, self.trainer.model, img_path)
+        #self.evaluator.predict_with_unknown(self.trainer.model, img_path, label_map, tau=2.0, msp_threshold=0.7)
 
     def run(self):
         schedule.every().day.at("06:00").do(self.run_daily)

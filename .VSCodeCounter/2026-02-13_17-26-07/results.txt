@@ -1,0 +1,33 @@
+Date : 2026-02-13 17:26:07
+Directory : c:\Users\yniit\Documents\課題\ai設計書\pytouch\aitraining\tests
+Total : 9 files,  1697 codes, 369 comments, 1010 blanks, all 3076 lines
+
+Languages
++----------+------------+------------+------------+------------+------------+
+| language | files      | code       | comment    | blank      | total      |
++----------+------------+------------+------------+------------+------------+
+| Python   |          9 |      1,697 |        369 |      1,010 |      3,076 |
++----------+------------+------------+------------+------------+------------+
+
+Directories
++-----------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| path                                                                              | files      | code       | comment    | blank      | total      |
++-----------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| .                                                                                 |          9 |      1,697 |        369 |      1,010 |      3,076 |
++-----------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+
+Files
++-----------------------------------------------------------------------------------+----------+------------+------------+------------+------------+
+| filename                                                                          | language | code       | comment    | blank      | total      |
++-----------------------------------------------------------------------------------+----------+------------+------------+------------+------------+
+| c:\Users\yniit\Documents\課題\ai設計書\pytouch\aitraining\tests\__init__.py            | Python   |          3 |          0 |          1 |          4 |
+| c:\Users\yniit\Documents\課題\ai設計書\pytouch\aitraining\tests\conftest.py            | Python   |         19 |          1 |          8 |         28 |
+| c:\Users\yniit\Documents\課題\ai設計書\pytouch\aitraining\tests\test_ConfigManager.py  | Python   |        244 |         46 |        114 |        404 |
+| c:\Users\yniit\Documents\課題\ai設計書\pytouch\aitraining\tests\test_imageCollector.py | Python   |        211 |         37 |        128 |        376 |
+| c:\Users\yniit\Documents\課題\ai設計書\pytouch\aitraining\tests\test_image_cnnmodel.py | Python   |         74 |         20 |         47 |        141 |
+| c:\Users\yniit\Documents\課題\ai設計書\pytouch\aitraining\tests\test_image_dataset.py  | Python   |         44 |         19 |         29 |         92 |
+| c:\Users\yniit\Documents\課題\ai設計書\pytouch\aitraining\tests\test_modelEvaluator.py | Python   |        246 |         62 |        139 |        447 |
+| c:\Users\yniit\Documents\課題\ai設計書\pytouch\aitraining\tests\test_model_trainer.py  | Python   |        499 |         94 |        314 |        907 |
+| c:\Users\yniit\Documents\課題\ai設計書\pytouch\aitraining\tests\test_preprocessor.py   | Python   |        357 |         90 |        230 |        677 |
+| Total                                                                             |          |      1,697 |        369 |      1,010 |      3,076 |
++-----------------------------------------------------------------------------------+----------+------------+------------+------------+------------+

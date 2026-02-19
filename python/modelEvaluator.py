@@ -1,122 +1,207 @@
+import datetime
 import os
 import torch
-import torch.nn as nn
 from sklearn.metrics import confusion_matrix
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.metrics import classification_report
-import glob
-from PIL import Image
-from pytorch_grad_cam.utils.image import show_cam_on_image, preprocess_image
-from torchvision.models import resnet18
 import torchvision.utils as vutils
+import torch.nn.functional as F
+from torchvision import transforms
+from PIL import Image
+import numpy as np
 import cv2
 from logging import getLogger
-from safe_imread import safe_imread
 
 class ModelEvaluator:
     def __init__(self):
         # GPU使用可能なら使う
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.logger = getLogger("myapp")
-        
-    def evaluate(self, num_classes, label_map, model, dataloader):
-        criterion = nn.CrossEntropyLoss(reduction='none') # 個別サンプルごとの損失を返すように設定
-        correct_per_class = [0] * num_classes
-        total_per_class = [0] * num_classes
-        loss_per_class = [0.0] * num_classes
 
-        # 辞書のキーと値を反転
-        reverse_label_map = {v: k for k, v in label_map.items()}
+    # 出力ディレクトリ作成
+    def _prepare_output_dir(self, model):
+        try:
+            dir_name = f"misclassified_{model.__class__.__name__}"
+            os.makedirs(dir_name, exist_ok=True)
+            return dir_name
+        except Exception as e:
+            raise RuntimeError(f"誤分類保存ディレクトリ作成エラー: {e}")
 
-        model.eval()
-        with torch.no_grad():
-            for images, labels in dataloader:
-                images = images.to(self.device)
-                labels = labels.to(self.device).long()
-                outputs = model(images)
+    # ラベル名抽出
+    def _extract_label_names(self, label_map):
+        try:
+            return list(label_map.keys())
+        except Exception as e:
+            raise RuntimeError(f"ラベル名抽出エラー: {e}")
 
-                # 各サンプルごとの損失を計算
-                losses = criterion(outputs, labels)
-
-                # 予測クラスを取得
-                _, predicted = torch.max(outputs, 1)
-
-                for i in range(labels.size(0)):
-                    label = labels[i].item()
-                    total_per_class[label] += 1
-                    loss_per_class[label] += losses[i].item()
-                    if predicted[i].item() == label:
-                        correct_per_class[label] += 1
-
-        # クラスごとの精度と平均損失を計算
-        for c in range(num_classes):
-            if total_per_class[c] > 0:
-                acc = correct_per_class[c] / total_per_class[c]
-                avg_loss = loss_per_class[c] / total_per_class[c]
-                log = f"Class {reverse_label_map[c]}: Accuracy = {acc:.4f}, Avg Loss = {avg_loss:.4f}"
-                print(log)
-                if hasattr(self, 'logger'):
-                    self.logger.info(log)
-            else:
-                print(f"Class {c}: No samples")
-    
-    def eval_conf_mat(self, label_map, model, dataloader):
-        misclassified_dir = "misclassified_" + f"{model.__class__.__name__}"
-        os.makedirs(misclassified_dir, exist_ok=True)
-        labels_name = []
-        for k, _ in label_map.items():
-            labels_name.append(k)
-        
-        all_preds = []
+    # 推論ループ
+    def _run_inference_loop(self, model, dataloader, labels_name, misclassified_dir):
         all_labels = []
+        all_preds = []
 
         model.eval()
+
         with torch.no_grad():
             for batch_idx, (images, labels) in enumerate(dataloader):
-                images = images.to(self.device)
-                labels = labels.to(self.device).long()
-                outputs = model(images)
+                try:
+                    images = images.to(self.device)
+                    labels = labels.to(self.device).long()
 
-                _, predicted = torch.max(outputs, 1)
+                    outputs = model(images)
+                    _, predicted = torch.max(outputs, 1)
 
-                # CPUに戻してリストに追加
-                all_preds.extend(predicted.cpu().numpy())
-                all_labels.extend(labels.cpu().numpy())
+                    all_preds.extend(predicted.cpu().numpy())
+                    all_labels.extend(labels.cpu().numpy())
 
-                # 誤分類画像を保存
-                for i in range(images.size(0)):
-                    if predicted[i] != labels[i]:
-                        img = images[i].cpu()
-                        true_label = labels[i].item()
-                        pred_label = predicted[i].item()
-                        filename = f"{misclassified_dir}/img_{batch_idx}_{i}_true-{labels_name[true_label]}_pred-{labels_name[pred_label]}.png"
-                        vutils.save_image(img, filename, normalize=True)
+                    self._save_misclassified_images(
+                        images, labels, predicted, batch_idx, labels_name, misclassified_dir
+                    )
 
-        # 混同行列を計算
-        cm = confusion_matrix(all_labels, all_preds)
+                except Exception as e:
+                    # shape mismatch は致命的
+                    msg = str(e).lower()
+                        
+                    if "mat1 and mat2 shapes cannot be multiplied" in msg:
+                        raise RuntimeError(f"モデル出力 shape エラー: {e}")
+                        
+                    if "size mismatch" in msg:
+                        raise RuntimeError(f"サイズ不一致: {e}")
 
-        # F1スコアなどを出力
-        report = classification_report(all_labels, all_preds, target_names=labels_name, digits=4)
-        report = f"{model.__class__.__name__}\n" + report
-        print(report)
-        self.logger.info(report)
+                    # それ以外は継続
+                    self.logger.error(f"推論ループ中の RuntimeError（継続）: {e}")
+                    continue
 
-        # 表示
-        plt.figure(figsize=(8,6))
-        sns.heatmap(cm, annot=True, fmt="d", cmap="Blues",
-            xticklabels=labels_name, yticklabels=labels_name)
-        plt.xlabel("Predicted")
-        plt.ylabel("True")
-        plt.title("Confusion Matrix")
-        plt.show()
+        return all_labels, all_preds
 
-        #images = glob.glob("misclassified/*.png")
-        #for path in images[:10]:  # 最初の10枚だけ表示
-        #    img = Image.open(path)
-        #    plt.imshow(img)
-        #    plt.title(path.split("/")[-1])
-        #    plt.axis("off")
-        #    plt.show()
-    
-    
+
+    # 誤分類画像保存
+    def _save_misclassified_images(self, images, labels, predicted, batch_idx, labels_name, out_dir):
+        for i in range(images.size(0)):
+            if predicted[i] != labels[i]:
+                try:
+                    img = images[i].cpu()
+                    true_label = labels_name[labels[i].item()]
+                    pred_label = labels_name[predicted[i].item()]
+
+                    filename = f"{out_dir}/img_{batch_idx}_{i}_true-{true_label}_pred-{pred_label}.png"
+                    vutils.save_image(img, filename, normalize=True)
+
+                except Exception as e:
+                    self.logger.error(f"誤分類画像保存エラー: {e}")
+
+    # 混同行列計算
+    def _compute_confusion_matrix(self, all_labels, all_preds):
+        try:
+            return confusion_matrix(all_labels, all_preds)
+        except Exception as e:
+            raise RuntimeError(f"混同行列計算エラー: {e}")
+
+    # レポート生成
+    def _generate_classification_report(self, all_labels, all_preds, labels_name, model):
+        try:
+            report = classification_report(
+                all_labels, all_preds, target_names=labels_name, digits=4
+            )
+            return f"{model.__class__.__name__}\n{report}"
+        except Exception as e:
+            raise RuntimeError(f"レポート生成エラー: {e}")
+
+    # 混同行列の保存（日時＋モデル名）
+    def _plot_confusion_matrix(self, cm, labels_name, save_dir, model):
+        # 保存ディレクトリ作成
+        try:
+            os.makedirs(save_dir, exist_ok=True)
+        except Exception as e:
+            raise RuntimeError(f"混同行列保存ディレクトリ作成エラー: {e}")
+
+        # ファイル名生成
+        try:
+            timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+            model_name = model.__class__.__name__
+            filename = f"confmat_{model_name}_{timestamp}.png"
+            save_path = os.path.join(save_dir, filename)
+        except Exception as e:
+            raise RuntimeError(f"ファイル名生成エラー: {e}")
+
+        # 描画処理
+        try:
+            plt.figure(figsize=(8, 6))
+            sns.heatmap(
+                cm,
+                annot=True,
+                fmt="d",
+                cmap="Blues",
+                xticklabels=labels_name,
+                yticklabels=labels_name
+            )
+            plt.xlabel("Predicted")
+            plt.ylabel("True")
+            plt.title(f"Confusion Matrix ({model_name})")
+        except Exception as e:
+            raise RuntimeError(f"混同行列描画エラー: {e}")
+
+        # 保存処理
+        try:
+            plt.savefig(save_path, dpi=300, bbox_inches="tight")
+            plt.close()
+            self.logger.info(f"混同行列を保存しました: {save_path}")
+        except Exception as e:
+            raise RuntimeError(f"混同行列保存エラー: {e}")
+
+
+    def eval_conf_mat(self, label_map, model, dataloader):
+        """
+        label_map: ラベルマップ
+        model: 学習済みモデル
+        dataloader: 評価用データローダー
+        """
+
+        # 出力ディレクトリ
+        try:
+            misclassified_dir = self._prepare_output_dir(model)
+            confusion_matrix_dir = "confusion_matrices"
+        except Exception as e:
+            self.logger.error(f"出力ディレクトリ作成失敗: {e}")
+            raise
+
+        # ラベル名抽出
+        try:
+            labels_name = self._extract_label_names(label_map)
+        except Exception as e:
+            self.logger.error(f"ラベル名抽出失敗: {e}")
+            raise
+
+        # 推論ループ
+        try:
+            all_labels, all_preds = self._run_inference_loop(
+                model, dataloader, labels_name, misclassified_dir
+            )
+        except Exception as e:
+            self.logger.error(f"推論ループ全体エラー: {e}")
+            raise
+
+        # 混同行列計算
+        try:
+            cm = self._compute_confusion_matrix(all_labels, all_preds)
+        except Exception as e:
+            self.logger.error(f"混同行列計算失敗: {e}")
+            raise
+
+        # レポート生成
+        try:
+            report = self._generate_classification_report(
+                all_labels, all_preds, labels_name, model
+            )
+            self.logger.info(report)
+        except Exception as e:
+            self.logger.error(f"レポート生成失敗: {e}")
+            raise
+
+        # 混同行列保存
+        try:
+            self._plot_confusion_matrix(cm, labels_name, confusion_matrix_dir, model)
+        except Exception as e:
+            self.logger.error(f"混同行列保存失敗: {e}")
+            raise
+
